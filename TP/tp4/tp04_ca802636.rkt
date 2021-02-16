@@ -36,7 +36,7 @@
   [numV (n : Number)]
   [closV (par : Symbol) (body : Exp) (env : Env)]
   [boxV (l : Location)]
-  [recV (fields : (Listof Symbol)) (vals : (Listof Value))])
+  [recV (fields : (Listof Symbol)) (vals : (Listof Location))])
 
 ; Représentation du résultat d'une évaluation
 (define-type Result
@@ -126,6 +126,19 @@
        (appE (parse (first sl)) (parse (second sl))))]
     [else (error 'parse "invalid input")]))
 
+
+
+; Recherche un symbole dans une liste de symboles
+; Renvoie la liste initiale des valeurs avec modification
+; de la valeur associée au symbole fd par new-val
+(define (update [fd : Symbol] [new-val : Value]
+                [fds : (Listof Symbol)] [vs : (Listof Value)]) : (Listof Value)
+  (cond
+    [(empty? fds) (error 'interp "no such field")]
+    [(equal? fd (first fds)) (cons new-val (rest vs))]
+    [else (cons (first vs) (update fd new-val (rest fds) (rest vs)))]))
+
+
 ;;;;;;;;;;;;;;;;;;
 ; Interprétation ;
 ;;;;;;;;;;;;;;;;;;
@@ -180,6 +193,11 @@
      (type-case Value (v*s-v (interp rec env sto))
        [(recV fds vs) (v*s (find fd fds vs) sto)]
        [else (error 'interp "not a record")])]
+    
+    [(setE rec fd arg)
+     (type-case Value (interp rec env )
+       [(recV fds vs) (recV fds (update fd (interp arg env) fds vs))]
+       [else (error 'interp "not a record")])]
    
     ))
 
@@ -191,20 +209,14 @@
 
   (if (empty? args)
       ( v*s (recV fds acc)  sto-l)
-       (with [(v sto) (interp (first args) env sto-l)] 
-              (aux-record (rest args) fds sto env (cons v acc)))) )
+      (with [(v sto) (interp (first args) env sto-l)] 
+            (aux-record (rest args) fds sto env (cons v acc)))) )
                                                  
 
 
   
-;(if (empty? args) 
-;   (with [(v sto) (interp (first args) env sto-l)]
-;  (if (empty? (rest args)) ()) ( cons v  (aux-record (rest args) sto env)))))
 
 
-; [(beginE l r)
-;     (with [(v-l sto-l) (interp l env sto)]
-;           (foldr (lambda (x) (interp x env sto-l)) v-l r))]
 
 ; Fonctions utilitaires pour l'arithmétique
 (define (num-op [op : (Number Number -> Number)]
