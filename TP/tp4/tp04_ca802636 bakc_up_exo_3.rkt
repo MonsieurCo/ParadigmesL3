@@ -28,9 +28,7 @@
   [setboxE (b : Exp) (val : Exp)]
   [beginE (l : Exp) (r : (Listof Exp))]
   [recordE (fields : (Listof Symbol)) (args : (Listof Exp))]
-  [getE (record : Exp) (field : Symbol)]
-  [setE (record : Exp) (field : Symbol) (arg : Exp)])
-
+  [getE (record : Exp) (field : Symbol)])
 ; Représentation des valeurs
 (define-type Value
   [numV (n : Number)]
@@ -111,16 +109,13 @@
      (let ([sl (s-exp->list s)])
        (beginE (parse (second sl)) (map parse (rest (rest sl)))))]
 
-    [(s-exp-match? `{record [SYMBOL ANY] ...} s)
+   [(s-exp-match? `{record [SYMBOL ANY] ...} s)
      (let ([sl (s-exp->list s)])
        (recordE (map (lambda (l) (s-exp->symbol (first (s-exp->list l)))) (rest sl))
                 (map (lambda (l) (parse (second (s-exp->list l)))) (rest sl))))]
     [(s-exp-match? `{get ANY SYMBOL} s)
      (let ([sl (s-exp->list s)])
        (getE (parse (second sl)) (s-exp->symbol (third sl))))]
-    [(s-exp-match? `{set ANY SYMBOL ANY} s)
-     (let ([sl (s-exp->list s)])
-       (setE (parse (second sl)) (s-exp->symbol (third sl)) (parse (fourth sl))))]
     [(s-exp-match? `{ANY ANY} s)
      (let ([sl (s-exp->list s)])
        (appE (parse (first sl)) (parse (second sl))))]
@@ -302,7 +297,6 @@
                         {let {[v {set-box! b2 3}]}
                           {unbox b1}}}})
       (numV 1))   
-
 ( test ( interp-expr `{ let {[r { record [a 1]}]}
                          { begin { set! r a 2} { get r a} } })
        ( numV 2))
