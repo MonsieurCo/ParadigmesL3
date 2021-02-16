@@ -210,7 +210,7 @@
   (if (empty? args)
       ( v*s (recV fds acc)  sto-l)
       (with [(v sto) (interp (first args) env sto-l)] 
-            (aux-record (rest args) fds sto env (cons v acc)))) )
+            (aux-record (rest args) fds sto env (cons (cell (new-loc v) v)  acc)))) )
                                                  
 
 
