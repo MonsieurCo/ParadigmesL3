@@ -94,7 +94,7 @@
        (beginE (parse (second sl)) (parse (third sl))))]
     [(s-exp-match? `{adress SYMBOL} s)
      (let ([sl (s-exp->list s)])
-       (adressE (second sl)))]
+       (adressE (s-exp->symbol (second sl))))]
     [(s-exp-match? `{content ANY} s)
      (let ([sl (s-exp->list s)])
      (contentE (parse (second sl ))))]
@@ -153,10 +153,11 @@
      (with [(v-l sto-l) (interp l env sto)]
            (interp r env sto-l))]
 
-    [(adressE var) (v*s (numV (lookup var env)) sto)]
+    [(adressE var) (if (interger? var
+     (v*s (numV (lookup var env)) sto)]
     [(contentE loc)
      (with [(v-l sto-l) (interp loc env sto)]
-     (v*s (fetch v-l sto-l) sto-l))]
+     (v*s (fetch ( numV-n v-l) sto-l) sto-l))]
     [(set-contentE loc expr) ]
     
     ))
