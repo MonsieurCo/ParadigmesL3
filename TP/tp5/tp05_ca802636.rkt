@@ -25,12 +25,13 @@
   [letE (s : Symbol) (rhs : Exp) (body : Exp)]
   [setE (s : Symbol) (val : Exp)]
   [beginE (l : Exp) (r : Exp)]
-  [adressE (s : Symbol)]
+  [addressE (s : Symbol)]
   [contentE (e : Exp)]
-  [set-contentE ( l : Exp) (r : Exp)])
+  [set-contentE ( l : Exp) (r : Exp)]
+  [mallocE (e : EXP) ])
 
 ;verifier si n est un interger
-( define ( integer ? n) (= n ( floor n)))
+( define ( integer? n) (= n ( floor n)))
 
 
 ; Représentation des valeurs
@@ -92,15 +93,19 @@
     [(s-exp-match? `{begin ANY ANY} s)
      (let ([sl (s-exp->list s)])
        (beginE (parse (second sl)) (parse (third sl))))]
-    [(s-exp-match? `{adress SYMBOL} s)
+    [(s-exp-match? `{address SYMBOL} s)
      (let ([sl (s-exp->list s)])
-       (adressE (s-exp->symbol (second sl))))]
+       (addressE (s-exp->symbol (second sl))))]
     [(s-exp-match? `{content ANY} s)
      (let ([sl (s-exp->list s)])
      (contentE (parse (second sl ))))]
     [(s-exp-match? `{set-content! ANY ANY } s)
      (let ([sl (s-exp->list s)])
        (set-contentE (parse (second sl)) (parse (third sl))))]
+    [(s-exp-match? `{malloc ANY} s)
+     (let ([sl (s-exp->list s)])
+       (mallocE (parse (second sl))))]
+                   
      
      [(s-exp-match? `{ANY ANY} s)
       (let ([sl (s-exp->list s)])
@@ -153,12 +158,18 @@
      (with [(v-l sto-l) (interp l env sto)]
            (interp r env sto-l))]
 
-    [(adressE var) (if (interger? var
-     (v*s (numV (lookup var env)) sto)]
-    [(contentE loc)
+    [(addressE var) (v*s (numV (lookup var env)) sto) ]
+    [(contentE loc) 
      (with [(v-l sto-l) (interp loc env sto)]
-     (v*s (fetch ( numV-n v-l) sto-l) sto-l))]
-    [(set-contentE loc expr) ]
+           (if (integer? ( numV-n v-l))
+     (v*s (fetch ( numV-n v-l) sto-l) sto-l) (error 'interp "segmentation fault")))]
+    
+    [(set-contentE loc expr) (with [(v-l sto-l) (interp loc env sto)]
+                       (if (integer? ( numV-n v-l))  
+                                   (with[(exp-r sto-exp)(interp expr env sto-l)]
+                                        (v*s exp-r (override-store (cell ( numV-n v-l) exp-r) sto-exp))) (error 'interp "segmentation fault")) )]
+    [(mallocE expr) (with [(v-l sto-l) (interp expr env sto)]
+                          (if (numV? v-l) (
     
     ))
 
@@ -205,3 +216,19 @@
 
 (define (interp-expr [e : S-Exp]) : Value
   (v*s-v (interp (parse e) mt-env mt-store)))
+
+(test (interp-expr `{let {[x 0]} {address x}}) (numV 1))
+(test (interp-expr `{let {[x 0]} {content 1}}) (numV 0))
+(test (interp-expr `{let {[x 0]}
+                        {begin {set-content! 1 2}
+                               x}})
+        (numV 2))
+
+
+( test ( interp ( parse `{ let {[p { malloc 3}]} p}) mt-env mt-store )
+(v*s ( numV 1) ( list ( cell 4 ( numV 1)) ; addresse de p
+( cell 3 ( numV 0))
+( cell 2 ( numV 0))
+( cell 1 ( numV 0)))))
+
+
