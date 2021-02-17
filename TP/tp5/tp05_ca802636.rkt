@@ -94,13 +94,18 @@
        (beginE (parse (second sl)) (parse (third sl))))]
     [(s-exp-match? `{adress SYMBOL} s)
      (let ([sl (s-exp->list s)])
-       (adressE (parse (second sl))))]
-    [s-exp-match? `{content
-     
-    [(s-exp-match? `{ANY ANY} s)
+       (adressE (second sl)))]
+    [(s-exp-match? `{content ANY} s)
      (let ([sl (s-exp->list s)])
-       (appE (parse (first sl)) (parse (second sl))))]
-    [else (error 'parse "invalid input")]))
+     (contentE (parse (second sl ))))]
+    [(s-exp-match? `{set-content! ANY ANY } s)
+     (let ([sl (s-exp->list s)])
+       (set-contentE (parse (second sl)) (parse (third sl))))]
+     
+     [(s-exp-match? `{ANY ANY} s)
+      (let ([sl (s-exp->list s)])
+        (appE (parse (first sl)) (parse (second sl))))]
+     [else (error 'parse "invalid input")]))
 
 ;;;;;;;;;;;;;;;;;;
 ; Interprétation ;
@@ -146,7 +151,15 @@
              (v*s v-val (override-store (cell l v-val) sto-val))))]
     [(beginE l r)
      (with [(v-l sto-l) (interp l env sto)]
-           (interp r env sto-l))]))
+           (interp r env sto-l))]
+
+    [(adressE var) (v*s (numV (lookup var env)) sto)]
+    [(contentE loc)
+     (with [(v-l sto-l) (interp loc env sto)]
+     (v*s (fetch v-l sto-l) sto-l))]
+    [(set-contentE loc expr) ]
+    
+    ))
 
 ; Fonctions utilitaires pour l'arithmétique
 (define (num-op [op : (Number Number -> Number)]
