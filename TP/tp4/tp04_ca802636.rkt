@@ -66,7 +66,7 @@
       (if (equal? (cell-location (first s)) (cell-location c)) (cons c (rest s)) (cons (first s) (override-store c (rest s))))))
 
 ; Recherche un symbole dans une liste de symboles et renvoie la valeur associée
-(define (find [fd : Symbol] [fds : (Listof Symbol)] [vs : (Listof Value)]) : Value
+(define (find [fd : Symbol] [fds : (Listof Symbol)] [vs : (Listof 'a)]) : 'a
   (cond
     [(empty? fds) (error 'interp "no such field")]
     [(equal? fd (first fds)) (first vs)]
@@ -191,13 +191,16 @@
       
     [(getE rec fd)
      (type-case Value (v*s-v (interp rec env sto))
-       [(recV fds vs) (v*s (find fd fds vs) sto)]
+       [(recV fds vs) (v*s ( fetch (find fd fds vs) sto) sto)]
        [else (error 'interp "not a record")])]
     
     [(setE rec fd arg)
-     (type-case Value (interp rec env )
-       [(recV fds vs) (recV fds (update fd (interp arg env) fds vs))]
-       [else (error 'interp "not a record")])]
+      (with [(v-b sto-b) (interp rec env sto)]
+           (type-case Value v-b
+             [(recV fds vs)
+              (with [(v-val sto-val) (interp arg env sto-b)]
+                    (v*s v-val (override-store (cell (find fd fds vs) v-val) sto-val)))]
+       [else (error 'interp "not a record")]))]
    
     ))
 
@@ -206,11 +209,11 @@
         (if (empty? (rest r-e)) (v*s v sto) (aux (rest r-e) env sto))))
 
 (define (aux-record args fds sto-l env acc) : Result
-
   (if (empty? args)
-      ( v*s (recV fds acc)  sto-l)
-      (with [(v sto) (interp (first args) env sto-l)] 
-            (aux-record (rest args) fds sto env (cons (cell (new-loc v) v)  acc)))) )
+      ( v*s (recV fds (reverse acc))  sto-l)
+      (with [(v sto) (interp (first args) env sto-l)]
+            (let ([l (new-loc sto)])
+            (aux-record (rest args) fds  (override-store (cell l v) sto) env (cons l acc)))) ))
                                                  
 
 
@@ -316,11 +319,11 @@
       (numV 1))   
 
 ( test ( interp-expr `{ let {[r { record [a 1]}]}
-                         { begin { set! r a 2} { get r a} } })
+                         { begin { set r a 2} { get r a} } })
        ( numV 2))
 ( test ( interp-expr `{ let {[r { record [a 1] [b 2]}]}
                          { begin
-                            { set! r a {+ { get r b} 3} }
-                            { set! r b {* { get r a} 4} }
+                            { set r a {+ { get r b} 3} }
+                            { set r b {* { get r a} 4} }
                             {+ { get r a} { get r b} } } })
        ( numV 25))
