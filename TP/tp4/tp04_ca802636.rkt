@@ -118,7 +118,7 @@
     [(s-exp-match? `{get ANY SYMBOL} s)
      (let ([sl (s-exp->list s)])
        (getE (parse (second sl)) (s-exp->symbol (third sl))))]
-    [(s-exp-match? `{set ANY SYMBOL ANY} s)
+    [(s-exp-match? `{set! ANY SYMBOL ANY} s)
      (let ([sl (s-exp->list s)])
        (setE (parse (second sl)) (s-exp->symbol (third sl)) (parse (fourth sl))))]
     [(s-exp-match? `{ANY ANY} s)
@@ -319,11 +319,11 @@
       (numV 1))   
 
 ( test ( interp-expr `{ let {[r { record [a 1]}]}
-                         { begin { set r a 2} { get r a} } })
+                         { begin { set! r a 2} { get r a} } })
        ( numV 2))
 ( test ( interp-expr `{ let {[r { record [a 1] [b 2]}]}
                          { begin
-                            { set r a {+ { get r b} 3} }
-                            { set r b {* { get r a} 4} }
+                            { set! r a {+ { get r b} 3} }
+                            { set! r b {* { get r a} 4} }
                             {+ { get r a} { get r b} } } })
        ( numV 25))
