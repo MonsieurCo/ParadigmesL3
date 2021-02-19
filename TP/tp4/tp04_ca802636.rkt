@@ -327,3 +327,7 @@
                             { set! r b {* { get r a} 4} }
                             {+ { get r a} { get r b} } } })
        ( numV 25))
+
+(test/exn (interp-expr `{let {[a 2]}
+                          {get a a}})
+          "not a record")
