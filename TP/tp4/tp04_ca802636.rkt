@@ -331,3 +331,35 @@
 (test/exn (interp-expr `{let {[a 2]}
                           {get a a}})
           "not a record")
+
+
+(test (interp (parse `{begin
+                        {box 2}
+                        {set-box! {box 5} 6}}) mt-env  mt-store)
+      (v*s (numV 6) (list (cell 1 (numV 2)) (cell 2 (numV 6)))))
+
+
+(test/exn ( interp-expr `{ let {[a { box 1}]}
+                             { let {[r 9]}
+                                {+ { unbox a} {+ { get r c} { get r b} } } } })
+           "not a record")
+
+(test/exn (interp-expr `{+ {record [x 0]} 1})
+          "not a number")
+
+(test/exn (interp-expr `{{record [x 0]} 1})
+          "not a function")
+
+(test/exn (interp-expr `{get 0 x})
+          "not a record")
+
+(test/exn (interp-expr `{get {lambda {x} x} x})
+          "not a record")
+
+(test/exn (interp-expr `{let {[a {box 1}]}
+                          {let {[c 1]}
+                            {let {[r {record
+                                      [a {set-box! a {* 2 {unbox a}}}]
+                                      [b {set-box! a {* 2 {unbox a}}}]}]}
+                              {+ {unbox a} {+ {get c a} {get r b}}}}}})
+          "not a record")
