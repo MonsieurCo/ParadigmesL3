@@ -297,12 +297,3 @@
                         {let {[v {set-box! b2 3}]}
                           {unbox b1}}}})
       (numV 1))   
-( test ( interp-expr `{ let {[r { record [a 1]}]}
-                         { begin { set! r a 2} { get r a} } })
-       ( numV 2))
-( test ( interp-expr `{ let {[r { record [a 1] [b 2]}]}
-                         { begin
-                            { set! r a {+ { get r b} 3} }
-                            { set! r b {* { get r a} 4} }
-                            {+ { get r a} { get r b} } } })
-       ( numV 25))
