@@ -101,61 +101,24 @@
   (if (= (length args) 1)
       (appE (desugar fun) (desugar (first args)))
       (appE (fold-app fun (rest args)) (desugar (first args)))))
-
-
-(define (numerise n)
-  (cond
-    [(equal? n 0) (idE 'x)]
-    [else (appE (idE 'f) (numerise (- n 1 )))])) 
-
+      
   
-;  {let {[id rhs]} body} <=>  {{lambda {id} body} rhs}
+      
+  
 
     (define (desugar [e : ExpS]) : Exp
       (type-case ExpS e
         [(idS s) (idE s)]
         [(lamS pars body) (if (>= (length pars) 1)
                               (fold-pars pars body)
-                              (error 'desugar "not implemented"))]
+                              (error 'desugar "not implemented1"))]
         [(appS fun args) (if (>= (length args) 1)
                              (fold-app fun (reverse args))
-                             (error 'desugar "not implemented"))]
-        [(letS pars args body) (desugar (appS (lamS pars body) args))]
-        [(numS n)  ( lamE 'f  (lamE 'x (numerise n)))]
-        [(add1S) ( lamE 'n (lamE 'f (lamE 'x (appE ( idE 'f )(appE (appE (idE 'n) (idE 'f)) (idE 'x))))) )]
-        [(plusS) (lamE 'n (lamE 'm (appE (appE (idE 'm)  ( lamE 'n (lamE 'f (lamE 'x (appE ( idE 'f )(appE (appE (idE 'n) (idE 'f)) (idE 'x))))) )) (idE 'n))))]
-        [(multS) (lamE 'n (lamE 'm (appE (appE (idE 'm) (appE (desugar (plusS)) (idE 'n))) (desugar (numS 0)))))]
-        [(trueS) (lamE 'x (lamE 'y (idE 'x)))]
-        [(falseS)(lamE 'x (lamE 'y (idE 'y)))]
-        [(ifS cnd  l r ) ( appE (appE (appE (desugar cnd) ( lamE 'd (desugar l))) ( lamE 'd (desugar r))) (desugar (numS 0)))   ]
-        ; [(zeroS) (lamE 'n (appE  (idE 'n) (appE (lamE 'x (desugar (falseS))) (desugar (trueS) )) ))]
-        [(zeroS) (lamE 'n (appE (appE (idE 'n) (lamE 'x (desugar (falseS))) ) (desugar (trueS) )) )]
-        [(pairS) (lamE 'x (lamE 'y (lamE 'sel (appE (appE (idE 'sel ) (idE 'x)) (idE 'y) ))))]
-        [(fstS) (lamE 'p (appE (idE 'p) (desugar (trueS))))]
-        [(sndS) (lamE 'p (appE (idE 'p) (desugar (falseS))))]
-        [(sub1S) (lamE 'n (appE (desugar (fstS))(appE (appE (idE 'n) (shift)) (appE (appE (desugar (pairS)) (desugar (numS 0))) (desugar (numS 0))))))]
-        [(minusS) (lamE 'n (lamE 'm (appE (appE (idE 'm)(desugar (sub1S)))  (idE 'n))))]
-        [(letrecS par arg body) ])
-        
-
-
-                                
+                             (error 'desugar "not implemented2"))]
+        [(letS pars args body) (letE (fold-pars pars args) (desugar body) 
 
         
-   
- 
-;shift =>  (lamE 'p (appE (appE (desugar (pairS)) (appE (desugar (snds)) (idE 'p))) (appE (desugar (sndS)) idE 'p)))
-
- ;λx.λy.x≡ true
-;λx.λy.y≡ false
-
-                                          
-        
-        [else (error 'desugar "not implemented")]))
-
-(define (shift)
-  (lamE 'p (appE (appE (desugar (pairS)) (appE (desugar (sndS)) (idE 'p))) (appE  (desugar (add1S)) (appE (desugar (sndS)) (idE 'p))))))
-
+        [else (error 'desugar "not implemented3")]))
     ;;;;;;;;;;;;;;;;;;
     ; Interprétation ;
     ;;;;;;;;;;;;;;;;;;
@@ -217,7 +180,6 @@
                             (+ 1 (destruct arg f x))
                             (error 'expr->number "not a number"))]))
 
-
     ; Transforme une expression en booléen si possible
     (define (expr->boolean [e : Exp]) : Boolean
       (type-case Exp (interp e)
@@ -245,28 +207,3 @@
 
     (test(expr->string (desugar (parse `{{lambda{x y z}body}a b c})))"(λx.λy.λz.body) a b c")
     (test(expr->string (desugar (parse `{{lambda{x y z u v w}body}a b c r s t})))"(λx.λy.λz.λu.λv.λw.body) a b c r s t")
-( test
-(expr->string ( desugar ( parse `{ let {[x a] [y b] [z c]} body })))
-"(λx.λy.λz.body) a b c")
-
-( test ( interp-number `10) 10)
-( test ( interp-number `{ add1 1}) 2)
-( test ( interp-number `{+ 1 2}) 3)
-( test ( interp-number `{* 3 4}) 12)
-( test ( interp-boolean ` true ) #t)
-( test ( interp-boolean ` false ) #f)
-( test ( interp-number `{ if true 0 1}) 0)
-( test ( interp-number `{ if false 0 1}) 1)
-( test ( interp-boolean `{ zero? 0}) #t)
-( test ( interp-boolean `{ zero? 1}) #f)
-( test ( interp ( desugar ( parse `{ fst { pair a b} }))) (idE 'a))
-( test ( interp ( desugar ( parse `{ snd { pair a b} }))) (idE 'b))
-( test ( interp-number `{ sub1 2}) 1)
-( test ( interp-number `{ sub1 5}) 4)
-( test ( interp-number `{ sub1 12}) 11)
-( test ( interp-number `{ sub1 20}) 19)
-( test ( interp-number `{ sub1 1}) 0)
-( test ( interp-number `{- 4 2}) 2)
-( test ( interp-number `{- 1 2}) 0)
-
-
