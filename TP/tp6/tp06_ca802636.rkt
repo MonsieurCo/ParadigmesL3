@@ -115,7 +115,7 @@
         [(appS fun args) (if (>= (length args) 1)
                              (fold-app fun (reverse args))
                              (error 'desugar "not implemented2"))]
-        [(letS pars args body) (letE (fold-pars pars args) (desugar body) 
+        [(letS pars args body) (lamE (fold-pars pars args) (desugar body) )]
 
         
         [else (error 'desugar "not implemented3")]))

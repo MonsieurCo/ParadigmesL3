@@ -66,30 +66,19 @@
 ; Manipulation de la mémoire
 (define-type  Store[store (storages : (Listof  Storage))(pointers : (Listof  Pointer))])
 (define mt-store (store empty empty))
-;(define (override-store [new-cell : Storage]  [old-sto : Store ]) : Store
- ; (store (cons new-cell (store-storages old-sto)) (store-pointers old-sto) ))
+(define (override-store [new-cell : Storage]  [old-sto : Store ]) : Store
+  (store (cons new-cell (store-storages old-sto)) (store-pointers old-sto) ))
 
 ;(define (override-store (c : Storage) (s : Store)): (Listof Storage)
 ; (if (empty? s) (cons c s) 
 ;    (if (equal? (cell-location (first s)) (cell-location c)) (cons c (rest s)) (cons (first s) (override-store c (rest s))))))
 
-;(define (override-store [new-cell : Storage]  [old-sto : Store ] [pointers : (Listof  Pointer)]) : Store
-;(cond
- ; [(empty? (store-storages old-sto)) (store (cons new-cell (store-storages old-sto)) (store-pointers old-sto))]
-  ;[(equal? (cell-location (first (store-storages old-sto))) (cell-location new-cell)) (store con
-
-
-(define (auxi new-cell sto-sto)
-  (cond
-    [(empty? sto-sto) (cons new-cell sto-sto)]
-     [(equal? (cell-location new-cell) (cell-location (first sto-sto))) ( cons new-cell (rest sto-sto))]
-     [else (cons (first sto-sto) (auxi new-cell (rest sto-sto)))]))
-                                      
-
-  
-(define (override-store [new-cell : Storage]  [old-sto : Store ]) : Store
-  (store (auxi new-cell (store-storages old-sto)) (store-pointers old-sto)))
-  
+;(define (override-store [new-cell : Storage]  [old-storages : ( Listof Storage) ] pointers : (Listof  Pointer)]) : Store
+; (if (empty? (store-storages old-sto)) (cons new-cell old-sto)
+;    (if (equal? (cell-location (first (store-storages old-sto))) (cell-location new-cell))
+;       (store (cons new-cell (rest (store-storages old-sto))) (store-pointers old-sto))
+;      (override-store new-cell 
+;(store (cons new-cell (store-storages old-sto)) (store-pointers old-sto) ))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ; Analyse syntaxique ;
@@ -212,7 +201,7 @@
     ;                              (v*s v-malloc (store  (override-store (cell ( numV-n v-malloc)  v-l) sto-malloc) sto-malloc)) ) (error 'interp "not a size")))]
 
     [(freeE expr) (with  [(v-l sto-l) (interp expr env sto)]
-                         (v*s (numV 0)(store (je-veux-mourir  (numV-n v-l) (pointer-size (find-pointouille (numV-n v-l) (store-pointers sto-l))) (store-storages sto-l) (numV-n v-l) ) (elimine-pointeur (find-pointouille (numV-n v-l) (store-pointers sto-l)) (store-pointers sto-l) ))))]
+                         (v*s (numV 0)(store (mega-free v-l (pointer-size (find-pointouille (numV-n v-l) (store-pointers sto-l))) (store-storages sto-l)) (elimine-pointeur (find-pointouille (numV-n v-l) (store-pointers sto-l)) (store-pointers sto-l) ))))]
     
     ))
 
@@ -227,31 +216,15 @@
 (define (mega-free l size sto-storage)
   (cond
     [(empty? sto-storage) empty]
-    [(equal? (cell-val (first sto-storage)) l)  ( cons (first sto-storage) (libere  size     (rest sto-storage)))]
+    [(equal? (cell-val (first sto-storage)) l)  ( cons (first sto-storage) (libere  size    (rest sto-storage)))]
     [else ( cons (first sto-storage) (mega-free l size (rest sto-storage)))]
     ))
 
 
-(define (remove-cell l sto-storage)
-  (cond
-    [(empty? sto-storage) empty]
-    [(equal?  l  (cell-location (first sto-storage))) ( remove-cell l (rest sto-storage))]
-    [else (cons (first sto-storage) (remove-cell l (rest sto-storage)))]))
-                                                  
-
-(define (je-veux-mourir l size sto-storage origine-loc)
-  (cond
-    [(equal? l (+ size origine-loc)) sto-storage]
-    [else (je-veux-mourir (+ l 1) size (remove-cell l sto-storage) origine-loc )]))
-        
-
-
-
-  
 (define (libere n sto-storage)
   (cond
-    [(equal? n 0)   sto-storage]
-    [else (libere (- n 1 ) (if (empty? sto-storage) empty (rest sto-storage)))]))
+    [(equal? n 0)  sto-storage]
+    [else (libere (- n 1 ) (rest sto-storage))]))
 
 
 (define (find-pointouille l sto-pointeur) : Pointer
@@ -468,28 +441,3 @@
                                                                               (cell 2 (numV 0))
                                                                               (cell 1 (numV 0)))
                                                                              (list (pointer 10 5) (pointer 1 3)))))
-
-(test
-   (interp (parse `(let ([p (malloc 1)])
-                     (begin
-                       (set-content! p 1)
-                       (begin
-                         (set-content! p 2)
-                         (begin
-                           (set-content! p 3)
-                           (begin
-                             (set-content! p 4)
-                             (begin
-                               (set-content! p 5)
-                               (free p))))))))
-           mt-env
-           mt-store)
-   (v*s (numV 0) (store (list (cell 2 (numV 1))) '())))
-(test
-   (interp (parse `(let ([p (malloc 3)])
-                     (begin
-                       (set-content! (+ p 1) 42)
-                       (free p))))
-           mt-env
-           mt-store)
-   (v*s (numV 0) (store (list (cell 4 (numV 1))) '())))
