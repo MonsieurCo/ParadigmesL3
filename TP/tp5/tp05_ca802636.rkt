@@ -95,6 +95,7 @@
 ; Analyse syntaxique ;
 ;;;;;;;;;;;;;;;;;;;;;;
 
+
 (define (parse [s : S-Exp]) : Exp
   (cond
     [(s-exp-match? `NUMBER s) (numE (s-exp->number s))]
@@ -196,7 +197,7 @@
                (v*s (fetch ( numV-n v-l) sto-l) sto-l) (error 'interp "segmentation fault")))]
     
     [(set-contentE loc expr) (with [(v-l sto-l) (interp loc env sto)]
-                                   (if (integer? ( numV-n v-l))  
+                                   (if (and (integer? ( numV-n v-l)) (> (numV-n v-l) 0 ))  
                                        (with[(exp-r sto-exp)(interp expr env sto-l)]
                                             (v*s exp-r (override-store (cell ( numV-n v-l) exp-r) sto-exp))) (error 'interp "segmentation fault")) )]
 
@@ -493,3 +494,8 @@
            mt-env
            mt-store)
    (v*s (numV 0) (store (list (cell 4 (numV 1))) '())))
+
+(test/exn (interp-expr `{set-content! 0 2}) "segmentation fault")
+
+(test/exn (interp-expr `{let {[a {malloc 0}]} a})
+          "not a size")

@@ -127,7 +127,7 @@
         [(multS) (lamE 'n (lamE 'm (appE (appE (idE 'm) (appE (desugar (plusS)) (idE 'n))) (desugar (numS 0)))))]
         [(trueS) (lamE 'x (lamE 'y (idE 'x)))]
         [(falseS)(lamE 'x (lamE 'y (idE 'y)))]
-        [(ifS cnd  l r ) ( appE (appE (appE (desugar cnd) ( lamE 'd (desugar l))) ( lamE 'd (desugar r))) (desugar (numS 0)))   ]
+        [(ifS cnd  l r ) ( appE (appE (appE (desugar cnd) ( lamE 'd (desugar l))) ( lamE 'd (desugar r))) (idE '_))   ]
         ; [(zeroS) (lamE 'n (appE  (idE 'n) (appE (lamE 'x (desugar (falseS))) (desugar (trueS) )) ))]
         [(zeroS) (lamE 'n (appE (appE (idE 'n) (lamE 'x (desugar (falseS))) ) (desugar (trueS) )) )]
         [(pairS) (lamE 'x (lamE 'y (lamE 'sel (appE (appE (idE 'sel ) (idE 'x)) (idE 'y) ))))]
@@ -135,14 +135,88 @@
         [(sndS) (lamE 'p (appE (idE 'p) (desugar (falseS))))]
         [(sub1S) (lamE 'n (appE (desugar (fstS))(appE (appE (idE 'n) (shift)) (appE (appE (desugar (pairS)) (desugar (numS 0))) (desugar (numS 0))))))]
         [(minusS) (lamE 'n (lamE 'm (appE (appE (idE 'm)(desugar (sub1S)))  (idE 'n))))]
-        [(letrecS par arg body) ])
+        [(letrecS par arg body) (appE (lamE par (desugar body)) (appE (mk-rec) (lamE par (desugar arg))))
+
+                                      ]
+
+
+
+
+
+
+
+
+         
         
 
+;(λfac.fac (λf.λx.f (f (f (f (f (f x))))))) ((λbody-proc.(λfX.fX fX) (λfX.(λf.body-proc f)(λx.fX fX x)))
+; (λfac.λn.(λn.n (λ_.λx.λy.y) (λx.λy.x)) n (λ_.λf.λx.f x) (λ_.(λn.λm.n
+;((λn.λm.n (λn.λf.λx.f (n f x)) m) m) (λf.λx.x)) n (fac ((λn.λm.m ((λshift.λn.(λp.p
+;(λx.λy.x))(n shift ((λx.λy.λsel.sel x y)(λf.λx.x) (λf.λx.x))))(λp.(λx.λy.λsel.sel x
+;y)((λp.p (λx.λy.y)) p) ((λn.λf.λx.f (n f x))((λp.p (λx.λy.y)) p)))) n) n (λf.λx.fx)))) _))
 
-                                
+;"(λfac.fac (λf.λx.f (f (f (f (f (f x))))))) ((λbody-proc.(λfX.fX fX) (λfX.(λf.body-proc f)(λx.fX fX x)))
+;(λfac.fac (λn.(λn.n (λx.λx.λy.y) (λx.λy.x)) n (λd.λf.λx.f x) (λd.(λn.λm.m ((λn.λm.m (λn.λf.λx.f (n f x))
+;n) n) (λf.λx.x)) n (fac ((λn.λm.m (λn.(λp.p (λx.λy.x))(n (λp.(λx.λy.λsel.sel x y)((λp.p (λx.λy.y)) p)
+;((λn.λf.λx.f (n f x))((λp.p (λx.λy.y)) p))) ((λx.λy.λsel.sel x y)(λf.λx.x) (λf.λx.x)))) n) n (λf.λx.f x))))
+; (λf.λx.x))))"
 
         
-   
+;"(λfac.fac (λf.λx.f (f (f (f (f (f x))))))) ((λbody-proc.(λfX.fX fX) (λfX.(λf.body-proc f)(λx.fX fX x)))
+;
+;          (λn.(λn.n (λx.λx.λy.y) (λx.λy.x)) n (λd.λf.λx.f x) (λd.(λn.λm.m ((λn.λm.m (λn.λf.λx.f (n f x)) n) n) (λf.λx.x))
+; n (fac ((λn.λm.m (λn.(λp.p (λx.λy.x))(n (λp.(λx.λy.λsel.sel x y)((λp.p (λx.λy.y)) p) ((λn.λf.λx.f (n f x))
+;((λp.p (λx.λy.y)) p))) ((λx.λy.λsel.sel x y)(λf.λx.x) (λf.λx.x)))) n) n (λf.λx.f x)))) (λf.λx.x)))"
+
+
+
+        
+        
+;"(λfac.fac (λf.λx.f (f (f (f (f (f x))))))) ((λbody-proc.(λfX.fX fX) (λfX.λf.body-proc f (λx.fX fX x)))
+;(λn.(λn.n (λx.λx.λy.y) (λx.λy.x)) n (λd.λf.λx.f x) (λd.(λn.λm.m ((λn.λm.m (λn.λf.λx.f (n f x)) n) n)
+; (λf.λx.x)) n (fac ((λn.λm.m (λn.(λp.p (λx.λy.x))(n (λp.(λx.λy.λsel.sel x y)((λp.p (λx.λy.y)) p)
+; ((λn.λf.λx.f (n f x))((λp.p (λx.λy.y)) p))) ((λx.λy.λsel.sel x y)(λf.λx.x) (λf.λx.x)))) n) n (λf.λx.f x))))
+;(λf.λx.x)))"
+
+
+
+
+        
+
+;"(λfac.fac (λf.λx.f (f (f (f (f (f x))))))) ((λbody-proc.(λfX.fX fX) (λfX. (λf.body-proc f) (λx.fX fX x))
+;(λn.(λn.n (λx.λx.λy.y) (λx.λy.x)) n (λd.λf.λx.f x)
+;(λd.(λn.λm.m ((λn.λm.m (λn.λf.λx.f (n f x)) n) n) (λf.λx.x)) n
+;(fac ((λn.λm.m (λn.(λp.p (λx.λy.x))(n (λp.(λx.λy.λsel.sel x y)
+;((λp.p (λx.λy.y)) p) ((λn.λf.λx.f (n f x))((λp.p (λx.λy.y)) p)))
+;((λx.λy.λsel.sel x y)(λf.λx.x) (λf.λx.x)))) n) n (λf.λx.f x)))) (λf.λx.x)))"
+
+
+
+
+
+
+
+
+
+
+        
+;"(λfac.fac (λf.λx.f (f (f (f (f (f x))))))) (λn.(λn.n (λx.λx.λy.y) (λx.λy.x)) n
+;(λd.λf.λx.f x) (λd.(λn.λm.m ((λn.λm.m (λn.λf.λx.f (n f x)) n) n) (λf.λx.x)) n
+;(fac ((λn.λm.m (λn.(λp.p (λx.λy.x))(n (λp.(λx.λy.λsel.sel x y)((λp.p (λx.λy.y)) p)
+;((λn.λf.λx.f (n f x))((λp.p (λx.λy.y)) p)))
+;((λx.λy.λsel.sel x y)(λf.λx.x) (λf.λx.x)))) n) n (λf.λx.f x)))) (λf.λx.x))"
+
+;"(λfac.fac (λf.λx.f (f (f (f (f (f x)))))))(λbody-proc.(λfX.fX fX)(λfX.λf.body-proc f) (λx.fX fX x))"
+
+
+
+        
+;"(λfac.fac (λf.λx.f (f (f (f (f (f x)))))))(λn.zero ? n (λd.λf.λx.f x)
+;(λd.(λn.λm.m ((λn.λm.m (λn.λf.λx.f (n f x)) n) n) (λf.λx.x)) n
+;(fac ((λn.λm.m (λn.(λp.p (λx.λy.x))(n (λp.(λx.λy.λsel.sel x y)((λp.p (λx.λy.y)) p)
+;((λn.λf.λx.f (n f x))((λp.p (λx.λy.y)) p))) ((λx.λy.λsel.sel x y)(λf.λx.x)
+;(λf.λx.x)))) n) n (λf.λx.f x)))) (λf.λx.x))"
+
  
 ;shift =>  (lamE 'p (appE (appE (desugar (pairS)) (appE (desugar (snds)) (idE 'p))) (appE (desugar (sndS)) idE 'p)))
 
@@ -152,6 +226,23 @@
                                           
         
         [else (error 'desugar "not implemented")]))
+;((λbody-proc.(λfX.fX fX)(λfX.(λf.body-procf) (λx.fX fX x))))
+;((λbody-proc.(λfX.fX fX) (λfX.(λf.body-proc f)(λx.fX fX x)))
+(define (mk-rec) (lamE 'body-proc (appE
+                                   (lamE 'fX (appE (idE 'fX) (idE 'fX)))
+                                   (lamE 'fX
+                                         ( appE
+                                           (lamE 'f (appE ( idE 'body-proc) (idE 'f)))
+                                           (lamE 'x (appE (appE (idE 'fX) (idE 'fX)) (idE 'x))))))))
+
+
+
+
+                       
+                       ; (appE
+                        ; (lamE 'fX (appE (idE 'fX) (idE 'fX)))
+                         ;      (lamE 'fX (appE (appE (appE (lamE 'f ( idE 'body-proc) (idE 'f))
+                          ;  (lamE 'x (appE (appE (idE 'fX) (idE 'fX)) (idE 'x)))))))))                                    
 
 (define (shift)
   (lamE 'p (appE (appE (desugar (pairS)) (appE (desugar (sndS)) (idE 'p))) (appE  (desugar (add1S)) (appE (desugar (sndS)) (idE 'p))))))
@@ -269,4 +360,11 @@
 ( test ( interp-number `{- 4 2}) 2)
 ( test ( interp-number `{- 1 2}) 0)
 
+( expr->string (desugar (parse `{ letrec {[fac { lambda {n} { if { zero? n}1{* n { fac {- n 1} } } } }]}{ fac 6} })))
 
+(test ( interp-number `{ letrec {[fac { lambda {n} { if { zero? n}1{* n { fac {- n 1} } } } }]}{ fac 6} })720)
+(test (interp-number`{letrec {[fac {lambda {n} {lambda {a}
+                                     {if {zero? n}
+                                         a
+                                         (fac (- n 1)(+ a 1)) }}}]}  
+                       {fac 10 3}}) 13) 
