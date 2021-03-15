@@ -111,6 +111,8 @@
   
 ;  {let {[id rhs]} body} <=>  {{lambda {id} body} rhs}
 
+
+
     (define (desugar [e : ExpS]) : Exp
       (type-case ExpS e
         [(idS s) (idE s)]
@@ -135,21 +137,47 @@
         [(sndS) (lamE 'p (appE (idE 'p) (desugar (falseS))))]
         [(sub1S) (lamE 'n (appE (desugar (fstS))(appE (appE (idE 'n) (shift)) (appE (appE (desugar (pairS)) (desugar (numS 0))) (desugar (numS 0))))))]
         [(minusS) (lamE 'n (lamE 'm (appE (appE (idE 'm)(desugar (sub1S)))  (idE 'n))))]
-        [(letrecS par arg body) (appE (lamE par (desugar body)) (appE (mk-rec) (lamE par (desugar arg))))
-
-                                      ]
-
+        [(letrecS par arg body) (appE (lamE par (desugar body)) (appE (mk-rec) (lamE par (desugar arg))))]
+        ;[(divS) (
 
 
 
 
 
 
+;(λdiv.div (λf.λx.f (f (f (f x))))
+;(λf.λx.f (f (f (f x)))))
+;(λm.λn.(λdivinter.divinter m n n)
+;((λbody-proc.(λfX.fX fX)
+;(λfX.(λf.body-proc f)
+;(λx.fX fX x)))
+;(λdivinter.λm.λn.λk.(λn.n (λx.λx.λy.y)
+;(λx.λy.x)) k
+;(λd.(λn.λm.m
+;(λn.λf.λx.f (n f x)) n)
+;(λf.λx.f x) (divinter m n n))
+;(λd.(λn.n (λx.λx.λy.y) (λx.λy.x)) m (λd.λf.λx.x)
+;(λd.divinter ((λn.λm.m (λn.(λp.p (λx.λy.x))
+;(n (λp.(λx.λy.λsel.sel x y)((λp.p (λx.λy.y)) p)
+;((λn.λf.λx.f (n f x))((λp.p (λx.λy.y)) p)))
+;((λx.λy.λsel.sel x y)(λf.λx.x) (λf.λx.x)))) n) m
+;(λf.λx.f x)) n ((λn.λm.m (λn.(λp.p (λx.λy.x))
+;(n (λp.(λx.λy.λsel.sel x y)((λp.p (λx.λy.y)) p)
+;((λn.λf.λx.f (n f x))((λp.p (λx.λy.y)) p)))
+;((λx.λy.λsel.sel x y)(λf.λx.x) (λf.λx.x)))) n) k (λf.λx.f x))) _) _)))
 
          
+
+
+
+
+
+
+
         
 
 ;(λfac.fac (λf.λx.f (f (f (f (f (f x))))))) ((λbody-proc.(λfX.fX fX) (λfX.(λf.body-proc f)(λx.fX fX x)))
+                                            
 ; (λfac.λn.(λn.n (λ_.λx.λy.y) (λx.λy.x)) n (λ_.λf.λx.f x) (λ_.(λn.λm.n
 ;((λn.λm.n (λn.λf.λx.f (n f x)) m) m) (λf.λx.x)) n (fac ((λn.λm.m ((λshift.λn.(λp.p
 ;(λx.λy.x))(n shift ((λx.λy.λsel.sel x y)(λf.λx.x) (λf.λx.x))))(λp.(λx.λy.λsel.sel x
@@ -360,11 +388,30 @@
 ( test ( interp-number `{- 4 2}) 2)
 ( test ( interp-number `{- 1 2}) 0)
 
-( expr->string (desugar (parse `{ letrec {[fac { lambda {n} { if { zero? n}1{* n { fac {- n 1} } } } }]}{ fac 6} })))
+;( expr->string (desugar (parse `{ letrec {[fac { lambda {n} { if { zero? n}1{* n { fac {- n 1} } } } }]}{ fac 6} })))
 
 (test ( interp-number `{ letrec {[fac { lambda {n} { if { zero? n}1{* n { fac {- n 1} } } } }]}{ fac 6} })720)
 (test (interp-number`{letrec {[fac {lambda {n} {lambda {a}
                                      {if {zero? n}
                                          a
                                          (fac (- n 1)(+ a 1)) }}}]}  
-                       {fac 10 3}}) 13) 
+                       {fac 10 3}}) 13)
+
+
+
+
+(display "/ 4 4\n")
+;(expr->string (desugar (parse `{/ 4 4})))
+(display "\n\nletrec\n")
+(expr->string (desugar (parse `{let {[div {lambda {m} {lambda {n}
+                                                        {letrec {[divinter {lambda {m} {lambda {n} {lambda {k}
+                                                                                        
+                                                                                                     {if {zero? k}
+                                                                                                         (+ 1 (divinter m n n))
+                                                                                                         {if {zero? m}
+                                                                                                             0
+                                                                                                             (divinter (- m 1) n (- k 1))}}}}}]}
+                                                          {divinter m n n}}}}]}
+
+                                                 
+                                 {div 4 4}})))
