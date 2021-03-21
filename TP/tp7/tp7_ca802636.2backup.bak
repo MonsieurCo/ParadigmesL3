@@ -12,7 +12,7 @@
   [idE (s : Symbol)]
   [plusE (l : Exp) (r : Exp)]
   [multE (l : Exp) (r : Exp)]
-  [letrecE (s : (Listof Symbol)) (rhs : (Listof Exp)) (body : Exp)]
+  [letrecE (s : Symbol) (rhs : Exp) (body : Exp)]
   [ifE (cnd : Exp) (l : Exp) (r : Exp)]
   [lamE (par : Symbol) (body : Exp)]
   [appE (fun : Exp) (arg : Exp)]
@@ -35,7 +35,7 @@
 
 ; Représentation des liaisons
 ( define-type Binding
-   [ bind ( name : Symbol ) (val : ( Boxof Thunk ))])
+[ bind ( name : Symbol ) (val : ( Boxof Thunk ))])
 
 (define-type Thunk
   [delay (e : Exp) (env : Env) (mem : (Boxof (Optionof Value)))]
@@ -53,17 +53,15 @@
     [(delay e env mem)
      (type-case (Optionof Value) (unbox mem)
        [(none)(begin (set-box! mem (some (undefV)))
-                     (let ([val (interp e env)])
-                       (begin
-                         (set-box! mem (some val))
-                         val)))]
+                 (let ([val (interp e env)])
+                 (begin
+                   (set-box! mem (some val))
+                   val)))]
        [(some val) val])]
-    [(undef) (undefV)]))
+     [(undef) (undefV)]))
 
 
 
-(define (compose f g)
-  (lambda (x) (f (g x))))
 
 
 
@@ -90,14 +88,10 @@
      (let ([sl (s-exp->list s)])
        (let ([subst (s-exp->list (first (s-exp->list (second sl))))])
          (appE (lamE (s-exp->symbol (first subst)) (parse (third sl))) (parse (second subst)))))]
-    
-    [(s-exp-match? `{letrec {[SYMBOL ANY] [SYMBOL ANY] ...} ANY} s)
+    [(s-exp-match? `{letrec {[SYMBOL ANY]} ANY} s)
      (let ([sl (s-exp->list s)])
-       (let ([substs (map s-exp->list (s-exp->list (second sl)))])
-         (letrecE (map (compose s-exp->symbol first) substs)
-                  (map (compose parse second) substs)
-                  (parse (third sl)))))]
-    
+       (let ([subst (s-exp->list (first (s-exp->list (second sl))))])
+         (letrecE (s-exp->symbol (first subst)) (parse (second subst)) (parse (third sl)))))]
     [(s-exp-match? `{if ANY ANY ANY} s)
      (let ([sl (s-exp->list s)])
        (ifE (parse (second sl)) (parse (third sl)) (parse (fourth sl))))]
@@ -115,8 +109,8 @@
      (let ([sl (s-exp->list s)])
        (sndE (parse (second sl))))]
     ;[(s-exp-match? `{letrec ANY ... ANY}
-    ;              (let ([sl (s-exp->list s )])
-    ;               (letrecE (parse (second sl )) (parse(third sl)))))] 
+     ;              (let ([sl (s-exp->list s )])
+      ;               (letrecE (parse (second sl )) (parse(third sl)))))] 
     [(s-exp-match? `{ANY ANY} s)
      (let ([sl (s-exp->list s)])
        (appE (parse (first sl)) (parse (second sl))))]
@@ -125,50 +119,6 @@
 ;;;;;;;;;;;;;;;;;;
 ; Interprétation ;
 ;;;;;;;;;;;;;;;;;;
-(define (boxifi-moi-ça env s rhs)
-  (if (empty? s) env
-       (let ([b (box (undef))])
-       (let ([new-env (extend-env (bind (first s) b) env)])
-           (boxifi-moi-ça new-env (rest s) (rest rhs))))))
-
-
-(define (delay-moi-ça env s rhs)
-  (if (empty? s ) env
-      (let ([b (lookmerde (first s) env)])
-              (begin (set-box! b  (delay (first rhs) env (box (none))))
-              (delay-moi-ça env (rest s ) (rest rhs) )))))
-
-
-(define (lookmerde [n : Symbol] [env : Env]) : (Boxof Thunk)
-  (cond
-    [(empty? env) (error 'lookmerde "box de merde")]
-    [(equal? n (bind-name (first env))) (bind-val (first env))]
-    [else (lookmerde n (rest env))]))
-
-;  (letrecE
- ;'(even? odd?)
- ;(list
-;  (lamE
-;   'n
-;   (ifE
-;    (idE 'n)
-;    (appE (idE 'odd?) (plusE (idE 'n) (multE (numE -1) (numE 1))))
-;    (numE 1)))
-;  (lamE
-;   'n
-;   (ifE
-;    (idE 'n)
-;    (appE (idE 'even?) (plusE (idE 'n) (multE (numE -1) (numE 1))))
-;    (numE 0))))
-; (appE (idE 'even?) (numE 5)))
-
-
-
-
-
-;(define (delay-moi-ça rhs env)
- ; (let
-
 
 ; Interpréteur
 (define (interp [e : Exp] [env : Env]) : Value
@@ -178,9 +128,11 @@
     [(plusE l r) (num+ (interp l env) (interp r env))]
     [(multE l r) (num* (interp l env) (interp r env))]
     [(letrecE s rhs body)
-       (let ([new-env (delay-moi-ça (boxifi-moi-ça env s rhs) s rhs)])
-         
-           (interp body new-env))]
+     (let ([b (box (undef))])
+       (let ([new-env (extend-env (bind s b) env)])
+         (begin
+           (set-box! b  (delay rhs new-env (box (none))))
+           (interp body new-env))))]
     [(ifE cnd l r)
      (type-case Value (interp cnd env)
        [(numV n) (if (not (= n 0)) (interp l env) (interp r env))]
@@ -194,18 +146,18 @@
 
     [(pairE l r )
      (let ([f (delay l env (box (none)))])
-       (let ([s (delay r env (box (none)))])
-         (pairV f s )))]
+        (let ([s (delay r env (box (none)))])
+          (pairV f s )))]
     [(fstE p)
      (let ([pp (interp p env)])
        (if (pairV? pp)
-           (force (pairV-f  pp))
-           (error 'interp "not a pair")))]
+       (force (pairV-f  pp))
+       (error 'interp "not a pair")))]
     [(sndE p)
      (let ([pp (interp p env)])
        (if (pairV? pp)
-           (force (pairV-s  pp))
-           (error 'interp "not a pair")))]
+       (force (pairV-s  pp))
+        (error 'interp "not a pair")))]
     ;[(letrecE par arg body) 
     
     
@@ -285,28 +237,28 @@
 
 
 (test (interp-expr
-       `{ letrec
-             {; curryfied map2 on infinite lists
-              [map2 { lambda {f}
-                       { lambda {l1}
-                          { lambda {l2}
-                             { pair { {f { fst l1} } { fst l2} }
-                                    { { { map2 f} { snd l1} } { snd l2} } } } } }]
-              ; curryfied list-ref
-              [list-ref { lambda {l}
-                           { lambda {n}
-                              { if n
-                                   { { list-ref { snd l} } {- n 1} }
-                                   { fst l} } } }]
-              ; curryfied addition function
-              [add { lambda {x} { lambda {y} {+ x y} } }]
-              ; infinite fibonacci sequence !!!
-              ; ( list 0 1 1 2 3 5 8 13 ... )
-              [ fibo { pair 0
-                            { pair 1
-                                   { { { map2 add } fibo } { snd fibo } } } }]}
-           { { list-ref fibo } 7} })
-      ( numV 13))
+         `{ letrec
+               {; curryfied map2 on infinite lists
+                [map2 { lambda {f}
+                         { lambda {l1}
+                            { lambda {l2}
+                               { pair { {f { fst l1} } { fst l2} }
+                                      { { { map2 f} { snd l1} } { snd l2} } } } } }]
+                ; curryfied list-ref
+                [list-ref { lambda {l}
+                             { lambda {n}
+                                { if n
+                                     { { list-ref { snd l} } {- n 1} }
+                                     { fst l} } } }]
+                ; curryfied addition function
+                [add { lambda {x} { lambda {y} {+ x y} } }]
+                ; infinite fibonacci sequence !!!
+                ; ( list 0 1 1 2 3 5 8 13 ... )
+                [ fibo { pair 0
+                              { pair 1
+                                     { { { map2 add } fibo } { snd fibo } } } }]}
+             { { list-ref fibo } 7} })
+       ( numV 13))
 
 (test (interp-expr `{let {[x {1 2}]} 3}) (numV 3))
 (test (interp-expr `{letrec {[x {1 2}]} 3}) (numV 3))
