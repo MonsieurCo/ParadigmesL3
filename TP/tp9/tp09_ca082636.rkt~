@@ -23,8 +23,7 @@
   [getS (object : ExpS) (field : Symbol)]
   [sendS (object : ExpS) (method : Symbol) (arg : ExpS)]
   [superS (method : Symbol) (arg : ExpS)]
-  [selectS (cnd : ExpS) (obj : ExpS) (arg : ExpS)]
-  [instanceofS (expr : ExpS) (class : Symbol)]
+  [
 
   )
 
@@ -43,10 +42,7 @@
   [newE (class : Symbol) (field-values : (Listof Exp))]
   [getE (object : Exp) (field : Symbol)]
   [sendE (object : Exp) (method : Symbol) (arg : Exp)]
-  [ssendE (object : Exp) (class : Symbol) (method : Symbol) (arg : Exp)]
-  [selectE (cnd : Exp) (obj : Exp) (arg : Exp)]
-  [instanceofE (expr : Exp) (class : Symbol)]
-  )
+  [ssendE (object : Exp) (class : Symbol) (method : Symbol) (arg : Exp)])
 
 ; Représentation des valeurs
 (define-type Value
@@ -103,12 +99,6 @@
       [(s-exp-match? `{super SYMBOL ANY} s)
        (let ([sl (s-exp->list s)])
          (superS (s-exp->symbol (second sl)) (parse-r (third sl))))]
-      [(s-exp-match? `{select ANY ANY ANY} s)
-       (let ([sl (s-exp->list s)])
-         (selectS (parse-r (second sl)) (parse-r (third sl)) (parse-r (fourth sl))))]
-      [(s-exp-match? `{instanceof ANY SYMBOL} s)
-       (let ([sl (s-exp->list s)])
-         (instanceofS (parse (second sl))  (s-exp->symbol (third sl))))]
       [else (error 'parse "invalid input")])))
 
 ;;;;;;;;;;;;;;;
@@ -127,10 +117,7 @@
       [(newS c fd-vals) (newE c (map aux fd-vals))]
       [(getS o fd) (getE (aux o) fd)]
       [(sendS o mtd arg) (sendE (aux o) mtd (aux arg))]
-      [(superS mtd arg) (ssendE (thisE) super-name mtd (aux arg))]
-      [(selectS cnd obj arg) (selectE (aux cnd) (aux obj) (aux arg))]
-      [(instanceofS expr class) (instanceofE (aux expr) class)]
-      )))
+      [(superS mtd arg) (ssendE (thisE) super-name mtd (aux arg))])))
 
 ; passage d'une classe utilisateur en classe interne
 (define (class-s->e [c : (Symbol * ClassS)]) : (Symbol * Class)
@@ -229,14 +216,6 @@
                            (classE-field-names c)
                            fd-vals)))]
          [else (error 'interp "not an object")])]
-
-      [(selectE cnd obj arg) (if (objV? (interp-r obj ))
-                                 (let ([temp (interp-r cnd )])
-                                               (if (equal? temp (numV 0)) (interp-r (sendE obj 'select-false arg )) (interp-r (sendE obj 'select-true arg)) )) (error 'interp "not an object"))]
-
-      [(instanceofE expr class)]
-
-       
       [(sendE obj mtd arg)
        (let ([obj-v (interp-r obj)])
          (type-case Value obj-v
@@ -245,10 +224,6 @@
            [else (error 'interp "not an object")]))]
       [(ssendE obj class-name mtd arg)
        (call-method class-name mtd classes (interp-r obj) (interp-r arg))])))
-
-
-(define auxilo  
-
 
 ; Fonctions utilitaires pour l'arithmétique
 (define (num-op [op : (Number Number -> Number)]
@@ -316,6 +291,3 @@
                           addDist
                           {new Posn 1 2}})
       (numV 15))
-
-( test ( interp-expr `{ select {* 0 1} { new Selectable } {+ 2 3} } ( list `{ class Selectable extends Object { } { select-true {+ arg 4} } { select-false {* arg 5} } })) ( numV 25))
-( test/exn ( interp-expr `{ select 0 1 2} empty ) "not an object")
