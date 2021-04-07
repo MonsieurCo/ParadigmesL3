@@ -31,15 +31,15 @@
 ; Représentation des classes (langage interne)
 (define-type Class
   [classE (field-names : (Listof Symbol))
-          (methods : (Listof (Symbol * Exp)))])
+          (methods : (Listof (Symbol * Exp))) (super-name : Symbol)])
 
 ; Représentation des expressions (langage interne)
 (define-type Exp
   [thisE]
   [argE]
   [numE (n : Number)]
-  [plusE (l : Exp) (r : Exp)]
-  [multE (l : Exp) (r : Exp)]
+  ;[plusE (l : Exp) (r : Exp)]
+  ;[multE (l : Exp) (r : Exp)]
   [newE (class : Symbol) (field-values : (Listof Exp))]
   [getE (object : Exp) (field : Symbol)]
   [sendE (object : Exp) (method : Symbol) (arg : Exp)]
@@ -108,7 +108,7 @@
          (selectS (parse-r (second sl)) (parse-r (third sl)) (parse-r (fourth sl))))]
       [(s-exp-match? `{instanceof ANY SYMBOL} s)
        (let ([sl (s-exp->list s)])
-         (instanceofS (parse (second sl))  (s-exp->symbol (third sl))))]
+         (instanceofS (parse-r  (second sl))  (s-exp->symbol (third sl))))]
       [else (error 'parse "invalid input")])))
 
 ;;;;;;;;;;;;;;;
@@ -122,8 +122,8 @@
       [(thisS) (thisE)]
       [(argS) (argE)]
       [(numS n) (numE n)]
-      [(plusS l r) (plusE (aux l) (aux r))]
-      [(multS l r) (multE (aux l) (aux r))]
+      [(plusS l r) (sendE (aux l) 'plus (aux r))]
+      [(multS l r) (sendE (aux l) 'mult (aux r))]
       [(newS c fd-vals) (newE c (map aux fd-vals))]
       [(getS o fd) (getE (aux o) fd)]
       [(sendS o mtd arg) (sendE (aux o) mtd (aux arg))]
@@ -140,7 +140,7 @@
            (classE fds
                    (map (lambda (mtd)
                           (pair (fst mtd) (exp-s->e (snd mtd) super-name)))
-                        mtds)))]))
+                        mtds) super-name))]))
 
 ; compilation d'une classe utilisateur brute
 (define (compile-class
@@ -214,8 +214,8 @@
       [(thisE) this-v]
       [(argE) arg-v]
       [(numE n) (numV n)]
-      [(plusE l r) (num+ (interp-r l) (interp-r r))]
-      [(multE l r) (num* (interp-r l) (interp-r r))]
+      ;[(plusE l r) (num+ (interp-r l) (interp-r r))]
+      ;[(multE l r) (num* (interp-r l) (interp-r r))]
       [(newE class-name fd-exprs)
        (let ([c (find class-name classes)])
          (if (= (length fd-exprs) (length (classE-field-names c)))
@@ -234,7 +234,10 @@
                                  (let ([temp (interp-r cnd )])
                                                (if (equal? temp (numV 0)) (interp-r (sendE obj 'select-false arg )) (interp-r (sendE obj 'select-true arg)) )) (error 'interp "not an object"))]
 
-      [(instanceofE expr class)]
+      [(instanceofE classfille classmere)(let ([obj (interp-r classfille)])
+                                           (if (objV? obj) (auxilo (objV-class-name obj) classmere classes) (numV 0)))
+                                              
+                                           ]
 
        
       [(sendE obj mtd arg)
@@ -242,13 +245,17 @@
          (type-case Value obj-v
            [(objV class-name fd-vals)
             (call-method class-name mtd classes obj-v (interp-r arg))]
-           [else (error 'interp "not an object")]))]
+           [(numV n) (if (equal? 'plus mtd) (num+ obj-v (interp-r arg)) (if (equal? 'mult mtd) (num* obj-v (interp-r arg)) (error 'interp "not found")))]
+           ))]
       [(ssendE obj class-name mtd arg)
        (call-method class-name mtd classes (interp-r obj) (interp-r arg))])))
 
 
-(define auxilo  
-
+(define(auxilo classe-fille classe-mere classes)
+  (if (and (equal? classe-fille 'Object) (not (equal? classe-mere 'Object))) (numV 0)
+  (if (equal? classe-fille classe-mere) (numV 1)
+      (let ([temp (find classe-fille classes)])
+        (auxilo (classE-super-name temp) classe-mere classes)))))
 
 ; Fonctions utilitaires pour l'arithmétique
 (define (num-op [op : (Number Number -> Number)]
@@ -278,7 +285,7 @@
                      [this-v : Value]
                      [arg-v : Value]) : Value
   (type-case Class (find class-name classes)
-    [(classE field-names methods)
+    [(classE field-names methods super-name)
      (interp (find method-name methods) classes this-v arg-v)]))
 
 
@@ -319,3 +326,193 @@
 
 ( test ( interp-expr `{ select {* 0 1} { new Selectable } {+ 2 3} } ( list `{ class Selectable extends Object { } { select-true {+ arg 4} } { select-false {* arg 5} } })) ( numV 25))
 ( test/exn ( interp-expr `{ select 0 1 2} empty ) "not an object")
+
+(test (interp-posn `{send {new Posn 1 2}
+                          dist
+                          0})
+      (numV 3))
+
+(test (interp-posn `{send {new Posn3D 3 4 5}
+                          addDist
+                          {new Posn 1 2}})
+      (numV 15))
+( test ( interp-expr `{ select {* 0 1} { new Selectable } {+ 2 3} }
+                     ( list `{ class Selectable extends Object { }
+                                { select-true {+ arg 4} }
+                                { select-false {* arg 5} } }))
+       ( numV 25))
+( test/exn ( interp-expr `{ select 0 1 2}
+                         empty )
+           "not an object")
+( test ( interp-expr `{ instanceof { new Triple 1 2 3} Singleton }
+                     ( list `{ class Singleton extends Object {x} }
+                            `{ class Pair extends Singleton {y} }
+                            `{ class Triple extends Pair {z} }))
+       ( numV 1))
+( test ( interp-expr `{ instanceof { new Pair 1 2} Triple }
+                     ( list `{ class Singleton extends Object {x} }
+                            `{ class Pair extends Singleton {y} }
+                            `{ class Triple extends Pair {z} }))
+       ( numV 0))
+( test ( interp-expr `{ instanceof { new Pair 1 2} Object }
+                     ( list `{ class Singleton extends Object {x} }
+                            `{ class Pair extends Singleton {y} }
+                            `{ class Triple extends Pair {z} }))
+       ( numV 1))
+(test (interp-expr `{instanceof {new Pair 1 2} Object}
+                   (list `{class Singleton extends Object {x}}
+                         `{class Pair extends Singleton {y}}
+                         `{class Triple extends Pair {z}}))
+      (numV 1))
+
+(test (interp-expr `{instanceof {new Triple 1 2 3} Triple}
+                   (list `{class Singleton extends Object {x}}
+                         `{class Pair extends Singleton {y}}
+                         `{class Triple extends Pair {z}}))
+      (numV 1))
+
+(test (interp-expr `{instanceof 27 Object}
+                   (list `{class Singleton extends Object {x}}
+                         `{class Pair extends Singleton {y}}
+                         `{class Triple extends Pair {z}}))
+      (numV 0))
+(test (interp-expr `{instanceof {new Sextuple 1 2 3 4 5 6} Triple}
+                   (list `{class Singleton extends Object {x}}
+                         `{class Pair extends Singleton {y}}
+                         `{class Triple extends Pair {z}}
+                         `{class Quadruple extends Triple {a}}
+                         `{class Quintuple extends Quadruple {b}}
+                         `{class Sextuple extends Quintuple {c}}
+                         `{class Septuple extends Sextuple {d}}))
+      (numV 1))
+(test (interp-expr `{instanceof {new Singleton 1} Pair}
+                   (list `{class Singleton extends Object {x}}
+                         `{class Pair extends Singleton {y}}
+                         `{class Triple extends Pair {z}}
+                         `{class Quadruple extends Triple {a}}
+                         `{class Quintuple extends Quadruple {b}}
+                         `{class Sextuple extends Quintuple {c}}
+                         `{class Septuple extends Sextuple {d}}
+                         `{class Apart extends Object {d}}
+                         `{class Octo extends Apart {d}}))
+      (numV 0))
+( test ( interp-expr `{ send 1 plus 2} empty ) ( numV 3))
+( test ( interp-expr `{ send 1 mult 2} empty ) ( numV 2))
+(test (interp-expr `{send 2 plus {send 3 mult 4}} empty) (numV 14))
+( test/exn ( interp-expr `{ send 1 div 2} empty ) "not found")
+(test (interp-expr `{instanceof {new Pair 1 2} Object}
+                   (list `{class Singleton extends Object {x}}
+                         `{class Pair extends Singleton {y}}
+                         `{class Triple extends Pair {z}}))
+      (numV 1))
+(test (interp-expr `{instanceof (new Object) Object}
+                   (list `{class Singleton extends Object {x}}
+                         `{class Pair extends Singleton {y}}
+                         `{class Triple extends Pair {z}}))
+      (numV 1))
+
+(parse `{send 1 plus 2} #f)
+
+
+
+( test ( interp-expr `{ send 7 plus {send 1 plus 2}} empty ) ( numV 10))
+( test/exn ( interp-expr `{ send {send 7 plus {send 1 plus 2}} plus {new Object}} empty )"not a number")
+( test/exn ( interp-expr `{ send {new Object}  plus {send 7 plus {send 1 plus 2}}} empty )"not found")
+(test (interp-expr `{instanceof {new Object} Object}
+                   (list `{class Singleton extends Object {x}}
+                         `{class Pair extends Singleton {y}}
+                         `{class Triple extends Pair {z}})) 
+      (numV 1))
+( test ( interp-expr `{ instanceof { new Triple 1 2 3} Singleton }
+( list `{ class Singleton extends Object {x} }
+`{ class Pair extends Singleton {y} }
+`{ class Triple extends Pair {z} }))
+( numV 1))
+( test ( interp-expr `{ instanceof { new Pair 1 2} Triple }
+( list `{ class Singleton extends Object {x} }
+`{ class Pair extends Singleton {y} }
+`{ class Triple extends Pair {z} }))
+( numV 0))
+(test (interp-expr `{send {new Fibo 0 1} compute 10}
+                   (list `{class Fibo extends Object
+                            {u0 u1}
+                            {compute {select arg this arg}}
+                            {select-true {send {new Fibo
+                                                    {get this u1}
+                                                    {+ {get this u0} {get this u1}}}
+                                               compute
+                                               {+ arg -1}}}
+                            {select-false {get this u0}}}))
+      (numV 55))
+
+(test (interp-expr `{send {new AppE
+                               {new LamE
+                                    0
+                                    {new AppE
+                                         {new LamE
+                                              1
+                                              {new MultE
+                                                   {new PlusE
+                                                        {new IdE 0}
+                                                        {new NumE 2}}
+                                                   {new IdE 1}}}
+                                         {new NumE 3}}}
+                               {new NumE 1}}
+                          interp
+                          {new Empty}}
+                   (list `{class Binding extends Object
+                            {symb val}
+                            {equal {select {+ {get this symb} {* -1 arg}}
+                                           this
+                                           0}}
+                            {select-true 0}
+                            {select-false 1}}
+                         `{class Empty extends Object {}}
+                         `{class Env extends Object
+                            {binding env}
+                            {lookup {select {send {get this binding} equal arg} this 0}}
+                            {select-true {get {get this binding} val}}
+                            {select-false {send {get this env} lookup arg}}}
+                         `{class NumE extends Object
+                            {n}
+                            {interp {new NumV {get this n}}}}
+                         `{class IdE extends Object
+                            {id}
+                            {interp {send arg lookup {get this id}}}}
+                         `{class PlusE extends Object
+                            {l r}
+                            {interp (new NumV {+ {get {send {get this l} interp arg} n}
+                                                 {get {send {get this r} interp arg} n}})}}
+                         `{class MultE extends Object
+                            {l r}
+                            {interp (new NumV {* {get {send {get this l} interp arg} n}
+                                                 {get {send {get this r} interp arg} n}})}}
+                         `{class LamE extends Object
+                            {par body}
+                            {interp {new ClosV {get this par} {get this body} arg}}}
+                         `{class AppE extends Object
+                            {f x}
+                            {interp {send {send {get this f} interp arg}
+                                          apply
+                                          {send {get this x} interp arg}}}}
+                         `{class NumV extends Object {n}}
+                         `{class ClosV extends Object
+                            {par body env}
+                            {apply {send {get this body}
+                                         interp
+                                         {new Env {new Binding {get this par} arg} {get this env}}}}}))
+      (objV 'NumV (list (numV 9))))
+
+
+(test (interp-expr `{select {send 1 mult 2} {new Selectable} {+ 2 3}}
+                   (list `{class Selectable extends Object {}
+                            {select-true {+ arg 4}}
+                            {select-false {* arg 5}}}))
+      (numV 9))
+
+
+( test ( interp-expr `{ instanceof { new Pair 1 2} Pomme }
+( list `{ class Singleton extends Object {x} }
+`{ class Pair extends Singleton {y} }
+`{ class Triple extends Pair {z} }))
+( numV 0))
