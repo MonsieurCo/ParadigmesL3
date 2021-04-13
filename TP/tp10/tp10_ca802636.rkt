@@ -188,6 +188,7 @@
 (define (occurs [t1 : Type] [t2 : Type]) : Boolean
   (type-case Type t2
     [(arrowT t3 t4) (or (occurs t1 t3) (occurs t1 t4))]
+    [(prodT t3 t4) (or (occurs t1 t3) (occurs t1 t4))]
     [(varT is)
      (or (eq? t1 t2)
          (type-case (Optionof Type) (unbox is)
@@ -582,3 +583,10 @@
                              {lambda {[p : ?]} {if {fst p} {snd p} {+ 1 {snd p}}}}]}
                       {f {pair false 3}}})
       (numV 4))
+(test/exn (typecheck-expr `{letrec {[f : ?
+                                       {lambda {[p : ?]}
+                                         {if {fst p}
+                                             0
+                                             {f {snd p}}}}]}
+                             f})
+          "typecheck")
