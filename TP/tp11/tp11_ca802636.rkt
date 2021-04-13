@@ -104,6 +104,19 @@
                 (map (lambda (p) (parse-type (third (s-exp->list p)))) sl)))]
     [else (error 'parse "invalid input")]))
 
+;; Is SUBTYPE ??
+( define ( is-subtype? [t1 : Type ] [t2 : Type ]) : Boolean
+   (cond
+     ;[(numT? t1) (numT? t2)]
+     ;[(boolT? t1) (boolT? t2)]
+     [(arrowT? t1 ) (if (arrowT? t2 ) ( and (equal? (arrowT-par t1 ) (arrowT-par t2) ) (equal? (arrowT-res t1 ) (arrowT-res t2) )) #f)]
+     ;[(and (recordT? t1) (recordT t2)) (  
+     [else (equal? t1 t2)]
+     )
+
+
+   )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Vérification des types ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -139,13 +152,18 @@
            [t2 (typecheck arg env)])
        (type-case Type t1
          [(arrowT par-type res-type)
-          (if (equal? par-type t2)
+          (if (is-subtype? par-type t2)
               res-type
               (type-error arg par-type t2))]
          [else (type-error-function fun t1)]))]   
-    [(recordE fds args) (error 'typecheck "not yet implemented")]
-    [(getE rec fd) (error 'typecheck "not yet implemented")]
-    [(setE rec fd arg) (error 'typecheck "not yet implemented")]))
+    [(recordE fds args) (recordT fds (map {lambda {x} {typecheck x env}} args))]
+    [(getE rec fd) (let ([recT (typecheck rec env )])
+                     (if (recordT? recT) (find fd (recordT-fields recT) (recordT-type-fields recT)) (type-error-record rec recT ))) ]
+    [(setE rec fd arg) (let ([recT (typecheck rec env)])
+                         (if (recordT? recT ) (let ([nT (typecheck arg env)])
+                                                (let ([oT (find fd (recordT-fields recT) (recordT-type-fields recT))])
+                                                  (if (is-subtype? nT oT ) recT (type-error-record  rec recT))))(type-error-record  rec recT )))]
+    ))
 
 ; Concaténation de chaînes de caractères
 (define (cat [strings : (Listof String)]) : String
@@ -363,7 +381,6 @@
               (numT)))))
 
 ; Pour les enregistrements avec sous-typage
-
 (test (typecheck-expr `{{lambda {[r : {[x : num]}]}
                           {get r x}}
                         {record
@@ -414,3 +431,17 @@
                         {lambda {[r : {[x : num]}]}
                           {get r x}}})
       (numT))
+
+
+
+
+(test (is-subtype? (parse-type `{[y : {[p : num] [t : bool]}]
+                                 [x : num]
+                                 [z : bool]})
+                   (parse-type `{[x : num]
+                                 [y : {[t : bool]}]
+                                 [z : bool]}))
+      #t)
+
+
+
