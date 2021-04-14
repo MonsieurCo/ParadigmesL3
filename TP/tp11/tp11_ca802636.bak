@@ -107,39 +107,15 @@
 ;; Is SUBTYPE ??
 ( define ( is-subtype? [t1 : Type ] [t2 : Type ]) : Boolean
    (cond
-     [(and (arrowT? t1 ) (arrowT? t2)) ( and (is-subtype? (arrowT-par t2)(arrowT-par t1)) (is-subtype? (arrowT-res t1)  (arrowT-res t2)))]
-     [(and (recordT? t1) (recordT? t2)) (if (>= (length (recordT-fields t1))(length (recordT-fields t2)))
-                                            (auxitype (recordT-fields t2) (recordT-type-fields t2)(recordT-fields t1) (recordT-type-fields t1))
-                                            #f)]  
+     ;[(numT? t1) (numT? t2)]
+     ;[(boolT? t1) (boolT? t2)]
+     [(arrowT? t1 ) (if (arrowT? t2 ) ( and (equal? (arrowT-par t1 ) (arrowT-par t2) ) (equal? (arrowT-res t1 ) (arrowT-res t2) )) #f)]
+     ;[(and (recordT? t1) (recordT t2)) (  
      [else (equal? t1 t2)]
      )
+
+
    )
-
-
-(define (auxisubtype fds1 args1 fds2 args2)
-  (cond
-    [(empty? args1)  #t]
-    [(equal? (first fds1) (first fds2))
-                     (and
-                         (is-subtype? (first args1) (first args2))
-                          (auxisubtype (rest fds1) (rest args1) fds2  args2))]
-    
-    [else (and
-           (is-subtype? (first args1) (find (first fds1) fds2 args2))
-                 (auxisubtype (rest fds1) (rest args1) fds2 args2))]))
-
-
-(define (auxitype fds1 args1 fds2 args2)
-  (cond
-    [(empty? fds1) #t]
-    [(member (first fds1) fds2 )  (and (is-subtype? (find (first fds1) fds2 args2) (first args1) )(auxitype  (rest fds1) (rest args1) fds2 args2 ) )]
-    [else #f]))
-
-
-
-
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Vérification des types ;
@@ -176,7 +152,7 @@
            [t2 (typecheck arg env)])
        (type-case Type t1
          [(arrowT par-type res-type)
-          (if (is-subtype?  t2 par-type)
+          (if (is-subtype? par-type t2)
               res-type
               (type-error arg par-type t2))]
          [else (type-error-function fun t1)]))]   
@@ -468,79 +444,4 @@
       #t)
 
 
-(test (is-subtype? (parse-type `{[y : {[p : num] [t : bool]}]
-                                 [x : num]
-                                 [z : bool]
-                                 [M : {[l : num] [t : bool] [j : bool]}]})
-                   (parse-type `{[x : num]
-                                 [y : {[t : bool]}]
-                                 [z : bool]
-                                 [M : {[l : num] [t : bool] [j : bool][k : num]}]
 
-                                 }))
-      
-      #f)
-
-
-(test (is-subtype? 
-       (parse-type `{[w : {[a : bool]}]})
-      (parse-type `{[y : {[p : num] [t : bool]}]
-                                 [x : num]
-                                 [z : bool]
-                                 [M : {[l : num] [t : bool] [j : bool]}]})
-      )
-      #f)
-
-
-(test (is-subtype? (parse-type `{[q : {[p : num] [t : bool]}]
-                                 [f : num]
-                                 [y : {[p : num] [t : bool]}]})
-                   (parse-type `{[y : {[t : bool]}]
-                                 }))
-      #t)
-;;; Nb différent d'enregistrement
-(test (is-subtype? (parse-type `{[y : bool] ;t1
-                                 [x : num]})
-                   (parse-type `{[x : num]})) ;t2
-      #t) 
-(test (is-subtype? (parse-type `{[y : bool]}) ;t1
-                   (parse-type `{[y : bool] ;t2
-                                 [x : num]}))
-      #f)
-
-;;;; Enregistrement dans le désordre
-(test (is-subtype? (parse-type `{[x : num] [y : bool] [z : num]})
-                   (parse-type `{[y : bool] [z : num] [x : num]}))
-      #t)
-(test (is-subtype? (parse-type `{[x : num] [y : bool] [z : num]})
-                   (parse-type `{[y : bool] [z : bool] [x : num]}))
-      #f)
-
-;;; Enregistrement récursif
-(test (is-subtype? (parse-type `{[p : {[x : num] [y : bool]}]})
-                   (parse-type `{[p : {[x : num]}]}))
-      #t)
-(test (is-subtype? (parse-type `{[p : {[x : num]}]})
-                   (parse-type `{[p : {[x : num] [y : bool]}]}))
-      #f)
-
-(test (is-subtype? (parse-type `{[p : {[x : num] [a : num]}]})
-                   (parse-type `{[p : {[x : num] [y : bool]}]}))
-      #f)
-
-;;; Fonctions
-
-;Exemple 1 CM
-(test (is-subtype? (parse-type `{num -> {[val : num] [gen : num]}})
-                   (parse-type `{num -> {[val : num]}}))
-      #t)
-
-;Exemple 2 CM
-(test (is-subtype? (parse-type `{{[val : num] [gen : num]} -> num})
-                    (parse-type `{{[val : num]} -> num}))
-      #f)
-
-;Exemple 3 CM
-(test (is-subtype? (parse-type `{{[val : num]} -> num}) 
-                   (parse-type `{{[val : num] [gen : num]} -> num}))
-      #t)
