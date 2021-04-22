@@ -544,3 +544,8 @@
 (test (is-subtype? (parse-type `{{[val : num]} -> num}) 
                    (parse-type `{{[val : num] [gen : num]} -> num}))
       #t)
+(test/exn (typecheck-expr `{{lambda {[r : {[x : num] [y : num]}]}
+                          {+ {get r x} {get r y}}}
+                        {record
+                         [x {+ 1 2}]}}) "typecheck")
+;MCO
